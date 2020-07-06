@@ -28,6 +28,7 @@ def ED_method(PS, TH):
 
 def KNN_method(PS, PN, K):
     PD_K = []
+    PF_K = []
     random.seed(113)
     m, n = PS.shape
     for i in range(m):
@@ -52,17 +53,23 @@ def KNN_method(PS, PN, K):
         clf.fit(train, train_label)
         pre_label = clf.predict(test)  # prediction labels for testing data
         TP = 0
+        TF=0
         # to calculate the probability of detection:
         for k in range(len(pre_label)):
             if pre_label[k] == test_label[k] == 1:
                 TP = TP + 1
+            if test_label[k]==0 and pre_label[k] == 1:
+                TF  = TF +1
         Pd_k = TP / len(test_label[test_label == 1])
+        Pf_k = TP / len(test_label[test_label == 0])
         PD_K.append(Pd_k)
+        PF_K.append(Pf_k)
     PD_K = np.array(PD_K)
+    PF_K= np.array(PF_K)
     # plt.plot(PD_K, 'k--o', label='KNN', linewidth=2), plt.legend(fontsize=18, loc='upper left')
     # plt.grid()
     # plt.show()
-    return PD_K
+    return PD_K,PF_K
 
 
 def HED_method(TH_SNR, PS, PN, K, TH):
@@ -120,15 +127,32 @@ if __name__ == '__main__':
     # loading data :
     PS = np.load("dataset_signals.npy")  # Power of signal (21,500)
     PN = np.load("dataset_noise.npy")  # variance of noise (500,)
+    noise = PN
+    SNR = []
+    for i in range(21):
+        signal = PS[i, :]
+        snr=sum(signal) / sum(noise)
+        snr_db = 10 * np.log10(snr)
+        snr_db = np.floor(snr_db)
+        SNR.append(snr_db)
+    SNR = np.array(SNR)
+    SNR = SNR.tolist()
     TH = np.mean(PN)  # threshold of ED
     PD_E = ED_method(PS, TH)  # receive the probability  detection  of ED method
-    PD_K = KNN_method(PS, PN, 3)  # receive the probability  detection  of KNN method
+    PD_K, PF_K = KNN_method(PS, PN, 3)  # receive the probability  detection  of KNN method
     TH_SNR = 5  # threshold of SNR
     K = 3  # nearest neighbors of KNN
     PD = HED_method(TH_SNR, PS, PN, K, TH)   # receive the probability  detection  of HED method
     # Result visualization:
-    plt.plot(PD_E, 'r-*', label='ED'), plt.legend(fontsize=18)
-    plt.plot(PD, 'g--o', linewidth=4, label='HED'), plt.legend(fontsize=18)
-    plt.plot(PD_K, 'b--x', label='KNN', linewidth=2), plt.legend(fontsize=18, loc='lower right')
-    plt.grid(), plt.axis([0, 20, 0, 1])
+    xi = np.linspace(0, 20, 21)
+    plt.plot(xi,PD_E, 'r-*', label='ED'), plt.legend(fontsize=18)
+    plt.plot(xi,PD, 'g--o', linewidth=4, label='HED'), plt.legend(fontsize=18)
+    plt.plot(xi,PD_K, 'b--x', label='KNN', linewidth=2), plt.legend(fontsize=18, loc='lower right')
+    plt.grid()
+    # plt.axis([0, 20, 0, 1])
+    plt.xticks(xi, SNR)
     plt.show()
+    plt.plot(xi, PD_K)
+    plt.plot(xi, PF_K)
+    plt.show()
+
